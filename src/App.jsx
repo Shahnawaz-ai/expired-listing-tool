@@ -1,6 +1,64 @@
+import { useState } from "react";
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/clerk-react";
 
+const WEBHOOK_URL =
+  "https://shahai.app.n8n.cloud/webhook/1ca413d6-679b-40d3-9736-8a08ea30e7bd";
+
 function App() {
+  const [form, setForm] = useState({
+    agentName: "",
+    propertyAddress: "",
+    propertyDetails: "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState("");
+  const [error, setError] = useState("");
+
+  const handleChange = (e) =>
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setResult("");
+    setLoading(true);
+
+    try {
+      const response = await fetch(WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "llama-3.1-8b-instant",
+          max_tokens: 1024,
+          messages: [
+            {
+              role: "user",
+              content: `You are a real estate expert. Write a short, personalized outreach script for agent ${form.agentName} to send to the owner of an expired listing at ${form.propertyAddress}. Property details: ${form.propertyDetails}.`,
+            },
+          ],
+        }),
+      });
+
+      if (!response.ok)
+        throw new Error(`Server returned ${response.status}. Check your n8n workflow.`);
+
+      const data = await response.json();
+      const d = Array.isArray(data) ? data[0] : data;
+      const script = d?.output ?? d?.text ?? d?.script ?? d?.message ?? "";
+
+      if (!script)
+        throw new Error("n8n returned an empty response. Check your workflow output node.");
+
+      setResult(script);
+    } catch (err) {
+      setError(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCopy = () => navigator.clipboard.writeText(result);
+
   return (
     <div className="min-h-screen bg-slate-900 text-white p-8">
       {/* Header with User Profile */}
@@ -26,9 +84,95 @@ function App() {
 
         <SignedIn>
           <h1 className="text-2xl font-bold mb-6">Welcome to your dashboard</h1>
-          {/* PASTE YOUR TOOL CODE HERE */}
-          <div className="bg-slate-800 p-6 rounded-xl border border-slate-700">
-             <p>Your outreach tool will go here!</p>
+          
+          <div className="w-full max-w-2xl mx-auto bg-slate-950 border border-slate-800 rounded-2xl p-8 shadow-2xl text-left">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+              {/* Agent Name */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                  Agent Name <span className="text-amber-400">*</span>
+                </label>
+                <input
+                  name="agentName"
+                  value={form.agentName}
+                  onChange={handleChange}
+                  required
+                  placeholder="e.g. Sarah Mitchell"
+                  className="px-4 py-3 rounded-lg bg-slate-900 border border-slate-700 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 transition-all"
+                />
+              </div>
+
+              {/* Property Address */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                  Property Address <span className="text-amber-400">*</span>
+                </label>
+                <input
+                  name="propertyAddress"
+                  value={form.propertyAddress}
+                  onChange={handleChange}
+                  required
+                  placeholder="e.g. 2847 Maplewood Drive, Austin TX 78701"
+                  className="px-4 py-3 rounded-lg bg-slate-900 border border-slate-700 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 transition-all"
+                />
+              </div>
+
+              {/* Property Details */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                  Property Details <span className="text-amber-400">*</span>
+                </label>
+                <textarea
+                  name="propertyDetails"
+                  value={form.propertyDetails}
+                  onChange={handleChange}
+                  required
+                  rows={4}
+                  placeholder="e.g. 3 bed / 2 bath, listed at $485,000, 90 days on market, price likely too high"
+                  className="px-4 py-3 rounded-lg bg-slate-900 border border-slate-700 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 transition-all resize-none"
+                />
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className={`mt-1 py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-2 ${
+                  loading
+                    ? "bg-amber-500/40 text-slate-600 cursor-not-allowed"
+                    : "bg-amber-500 text-slate-950 hover:bg-amber-400 active:scale-95 shadow-lg shadow-amber-500/20"
+                }`}
+              >
+                {loading ? "Generating Script..." : "✨ Generate Groq Script"}
+              </button>
+            </form>
+
+            {/* Error Message */}
+            {error && (
+              <div className="mt-5 p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">
+                ⚠️ {error}
+              </div>
+            )}
+
+            {/* Result Output */}
+            {result && (
+              <div className="mt-6">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-bold uppercase tracking-widest text-amber-400">
+                    Generated Script
+                  </p>
+                  <button
+                    onClick={handleCopy}
+                    className="text-xs text-slate-400 hover:text-white border border-slate-700 hover:border-slate-500 px-3 py-1 rounded-md transition-all"
+                  >
+                    📋 Copy
+                  </button>
+                </div>
+                <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
+                  {result}
+                </div>
+              </div>
+            )}
           </div>
         </SignedIn>
       </div>
