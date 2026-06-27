@@ -141,4 +141,33 @@ export default function App() {
 
             {/* General Error Message */}
             {error && (
-              <div className="mt-5 p-4 rounded-lg bg-red-500/10 border border-red-500/3
+              <div className="mt-5 p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">
+                ⚠️ {error}
+              </div>
+            )}
+
+            {/* Result Output */}
+            {result && (
+              <div className="mt-6">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-bold uppercase tracking-widest text-amber-400">
+                    Generated Script
+                  </p>
+                  <button
+                    onClick={handleCopy}
+                    className="text-xs text-slate-400 hover:text-white border border-slate-700 hover:border-slate-500 px-3 py-1 rounded-md transition-all"
+                  >
+                    📋 Copy
+                  </button>
+                </div>
+                <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
+                  {result}
+                </div>
+              </div>
+            )}
+          </div>
+        </SignedIn>
+      </div>
+    </div>
+  );
+}
